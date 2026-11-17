@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d4ed8">
+<title>Al-Baraka Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{font-family:system-ui,'Segoe UI',Tahoma,sans-serif;background:#f1f5f9;padding-bottom:80px}
+#receipt{display:none}
+@media print{body>*:not(#receipt){display:none!important}#receipt{display:block!important;padding:12px;font-size:13px}}
+</style>
+</head>
+<body>
+<header class="bg-blue-700 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+  <div><div id="h-title" class="font-black text-base"></div><div id="h-sub" class="text-[11px] text-blue-100 font-bold"></div></div>
+  <div class="flex items-center gap-2">
+    <span id="save-badge" class="hidden items-center gap-1 bg-emerald-500/20 text-emerald-100 border border-emerald-400/30 px-2 py-1 rounded-lg text-[10px] font-black"><span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span><span id="h-saved"></span></span>
+    <button onclick="installPWAApp()" id="btn-install" class="bg-white/15 text-white px-3 py-1.5 rounded-xl text-xs font-extrabold"></button>
+    <button onclick="toggleLanguage()" id="lang-btn" class="bg-white text-blue-700 px-2.5 py-1.5 rounded-xl text-xs font-black">FR</button>
+  </div>
+</header>
+<main id="main" class="p-3 max-w-lg mx-auto space-y-3"></main>
+<nav id="nav" class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 grid grid-cols-5 z-30" style="padding-bottom:env(safe-area-inset-bottom,0px)"></nav>
+<div id="modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-slate-900/70" onclick="closeModal()"></div>
+  <div id="sheet" class="absolute inset-x-0 bottom-0 max-w-lg mx-auto bg-white rounded-t-3xl p-5 space-y-3 text-xs max-h-[90vh] overflow-y-auto"></div>
+</div>
+<div id="toast" class="fixed top-16 inset-x-0 mx-auto w-max max-w-[90%] bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl z-[60] hidden"></div>
+<div id="receipt"></div>
+
+<script>
+const L={
+appName:['البركة Pro','Al-Baraka Pro'],cur:['د.ج','DA'],
+home:['الرئيسية','Accueil'],pos:['البيع','Vente'],docs:['الوصولات','Bons'],stock:['المخزون','Stock'],debts:['الديون','Crédits'],
+subHome:['لوحة التسيير التجاري','Gestion Commerciale Mobile'],subPos:['نقطة البيع (POS)','Point de Vente (POS)'],
+saved:['محفوظ','Sauvé'],install:['تثبيت','Installer'],installHint:['من قائمة المتصفح اختر «إضافة إلى الشاشة الرئيسية»','Menu du navigateur → « Ajouter à l\'écran d\'accueil »'],
+salesToday:['مبيعات اليوم','Ventes du jour'],profit:['ربح اليوم','Bénéfice du jour'],expToday:['مصاريف اليوم','Dépenses du jour'],stockVal:['قيمة المخزون (التكلفة)','Valeur du stock (coût)'],recv:['ديون الزبائن','Créances clients'],payable:['ديون الموردين','Dettes fournisseurs'],
+expenses:['المصاريف','Dépenses'],expName:['البيان','Libellé'],amount:['المبلغ','Montant'],add:['إضافة','Ajouter'],
+backupTitle:['النسخ الاحتياطي والأمان','Sauvegarde & Sécurité'],storageOn:['✓ التخزين نشط','✓ Stockage actif'],waBtn:['حفظ نسخة + إرسال الملخص لواتساب','Sauvegarder + Bilan WhatsApp'],exportBtn:['تحميل ملف حفظ','Exporter fichier'],importBtn:['استرجاع ملف','Restaurer fichier'],
+resetBtn:['تفريغ البيانات التجريبية لبدء العمل الفعلي','Vider les données démo (Démarrer à zéro)'],resetTitle:['تصفير البيانات التجريبية','Réinitialiser les données démo'],
+resetWarn:['سيتم حذف السلع والفواتير التجريبية للبدء بمخزون فارغ ونظيف. يُنصح بتحميل نسخة احتياطية أولاً.','Toutes les données seront effacées. Il est conseillé de télécharger une sauvegarde d\'abord.'],
+cancel:['إلغاء','Annuler'],confirmReset:['تأكيد التصفير','Confirmer'],resetDone:['تم تصفير البيانات — جاهز للعمل!','Données réinitialisées !'],
+save:['حفظ','Enregistrer'],del:['حذف','Supprimer'],edit:['تعديل','Modifier'],print:['طباعة','Imprimer'],
+search:['ابحث بالاسم أو الباركود','Nom ou code-barres'],scan:['مسح','Scan'],scanTitle:['قارئ الباركود بالكاميرا','Scanner Code-Barres'],scanHint:['وجّه الكاميرا نحو الباركود','Pointez la caméra vers le code-barres'],noScan:['المسح بالكاميرا غير مدعوم في هذا المتصفح (استعمل Chrome)','Scan non supporté (utilisez Chrome)'],noCam:['تعذّر تشغيل الكاميرا','Caméra indisponible'],notFound:['الباركود غير موجود','Code-barres introuvable'],
+client:['الزبون','Client'],retail:['تجزئة','Détail'],wholesale:['جملة','Gros'],cart:['السلة','Panier'],empty:['لا يوجد شيء بعد','Rien pour le moment'],total:['المجموع','Total'],paid:['المدفوع (اتركه فارغاً = كامل)','Versé (vide = tout)'],rest:['المتبقي','Reste'],
+saveInv:['حفظ الوصل','Valider le bon'],invSaved:['تم حفظ الوصل','Bon enregistré'],noStock:['المخزون غير كاف: ','Stock insuffisant : '],confirmDel:['تأكيد الحذف؟','Confirmer la suppression ?'],
+name:['الاسم','Nom'],phone:['الهاتف','Téléphone'],balance:['الدين السابق / الرصيد الافتتاحي','Ancien crédit / Solde initial'],type:['النوع','Type'],clientT:['زبون','Client'],supplier:['مورد','Fournisseur'],
+addItem:['سلعة جديدة','Nouvel article'],addParty:['طرف جديد','Nouveau tiers'],barcode:['الباركود','Code-barres'],unit:['الوحدة','Unité'],cost:['سعر الشراء','Prix d\'achat'],retailP:['سعر التجزئة','Prix détail'],wholeP:['سعر الجملة','Prix gros'],qty:['الكمية','Quantité'],
+pay:['تسديد','Régler'],payTitle:['تسديد دفعة','Règlement'],paidOK:['تم تسجيل الدفعة','Paiement enregistré'],nameReq:['أدخل الاسم','Entrez un nom'],
+imported:['تم الاسترجاع بنجاح','Restauration réussie'],badFile:['ملف غير صالح','Fichier invalide'],confirmImport:['سيتم استبدال البيانات الحالية. متابعة؟','Les données actuelles seront remplacées. Continuer ?'],
+walkIn:['زبون عابر (Comptoir)','Client de passage (Comptoir)'],bonNo:['وصل رقم','Bon n°'],invoices:['وصل','bon(s)'],low:['مخزون منخفض','Stock bas'],clients:['الزبائن','Clients'],suppliers:['الموردون','Fournisseurs']
+};
+let lang='ar';try{lang=localStorage.getItem('brk_lang')||'ar'}catch(e){}
+const t=k=>(L[k]||[k,k])[lang==='ar'?0:1];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=v=>Number(v||0).toLocaleString('fr-FR')+' '+t('cur');
+const day=()=>new Date().toLocaleDateString('en-CA');
+const COMPTOIR=()=>({id:'p_comptoir',type:'client',name:'زبون عابر (Comptoir)',phone:'',balance:0});
+const DEFAULT_ITEMS=[
+{id:'1',barcode:'6130001001',name:'زيت المائدة 5 لتر',unit:'Bidon',cost:580,retail:650,wholesale:620,stock:40},
+{id:'2',barcode:'6130001002',name:'كسكسى متوسط 1 كغ',unit:'Paquet',cost:120,retail:150,wholesale:135,stock:60},
+{id:'3',barcode:'6130001003',name:'قهوة مطحونة 250غ',unit:'Paquet',cost:260,retail:310,wholesale:290,stock:45},
+{id:'4',barcode:'6130001004',name:'حليب معقم 1 لتر',unit:'Brique',cost:105,retail:125,wholesale:115,stock:72},
+{id:'5',barcode:'6130001005',name:'مياه معدنية 1.5ل (حزمة)',unit:'Fardeau',cost:170,retail:210,wholesale:190,stock:45}];
+let tab='home',items=structuredClone(DEFAULT_ITEMS),parties=[COMPTOIR()],docs=[],expenses=[],cart=[],mode='retail',client='p_comptoir',q='',memoryFallback={};
+
+/* ---------- Storage (IndexedDB + localStorage) ---------- */
+const DB_NAME='AlBarakaERP_DB',STORE='state_store';let dbP=null;
+function openIDB(){
+  if(dbP)return dbP;
+  dbP=new Promise((res,rej)=>{
+    if(!window.indexedDB)return rej('No IDB');
+    const r=indexedDB.open(DB_NAME,1);
+    r.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>{dbP=null;rej(r.error)};
+  });return dbP;
+}
+async function writeStorage(k,v){
+  const s=JSON.stringify(v);memoryFallback[k]=s;let ok=false;
+  try{localStorage.setItem(k,s);ok=true}catch(e){}
+  try{const db=await openIDB();await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(s,k);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});ok=true}catch(e){}
+  return ok;
+}
+async function readStorage(k){
+  try{const db=await openIDB();const v=await new Promise((res,rej)=>{const r=db.transaction(STORE,'readonly').objectStore(STORE).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});if(v)return JSON.parse(v)}catch(e){}
+  try{const v=localStorage.getItem(k);if(v)return JSON.parse(v)}catch(e){}
+  return memoryFallback[k]?JSON.parse(memoryFallback[k]):null;
+}
+async function loadAllData(){
+  try{
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+    const [i,p,d,e]=await Promise.all(['brk_items','brk_parties','brk_docs','brk_expenses'].map(readStorage));
+    const firstRun=i===null&&d===null&&p===null;
+    if(Array.isArray(i))items=i;
+    if(Array.isArray(p)&&p.length)parties=p;
+    if(Array.isArray(d))docs=d;
+    if(Array.isArray(e))expenses=e;
+    if(!parties.some(x=>x.id==='p_comptoir'))parties.unshift(COMPTOIR());
+    if(firstRun)await saveData(true);
+  }catch(e){console.warn('load error',e)}
+}
+async function saveData(silent=false){
+  const r=await Promise.all([writeStorage('brk_items',items),writeStorage('brk_parties',parties),writeStorage('brk_docs',docs),writeStorage('brk_expenses',expenses)]);
+  if(!silent&&r.every(Boolean)){const b=$('save-badge');b.classList.remove('hidden');b.classList.add('inline-flex')}
+  else if(!r.every(Boolean))toast('⚠ Storage error');
+}
+
+/* ---------- UI helpers ---------- */
+let tt;function toast(m){const e=$('toast');e.textContent=m;e.classList.remove('hidden');clearTimeout(tt);tt=setTimeout(()=>e.classList.add('hidden'),2600)}
+function modal(h){$('sheet').innerHTML=h;$('modal').classList.remove('hidden')}
+function closeModal(){stopScan();$('modal').classList.add('hidden')}
+const inp='w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold bg-white';
+const fld=(id,label,val='',type='text',extra='')=>`<label class="block"><span class="font-black text-slate-600">${label}</span><input id="${id}" type="${type}" value="${esc(val)}" ${extra} class="${inp} mt-1"></label>`;
+const card='bg-white border border-slate-200 p-4 rounded-2xl';
+const btn=(c)=>`rounded-xl text-xs font-black py-2.5 ${c}`;
+function setTab(x){tab=x;render()}
+function toggleLanguage(){lang=lang==='ar'?'fr':'ar';try{localStorage.setItem('brk_lang',lang)}catch(e){}render()}
+const pName=p=>p.id==='p_comptoir'?t('walkIn'):p.name;
+
+function render(){
+  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+  $('h-title').textContent=t('appName');$('h-sub').textContent=tab==='pos'?t('subPos'):tab==='home'?t('subHome'):t(tab);
+  $('h-saved').textContent=t('saved');$('btn-install').textContent=t('install');$('lang-btn').textContent=lang==='ar'?'FR':'AR';
+  const ic={home:'🏠',pos:'🛒',docs:'🧾',stock:'📦',debts:'💳'};
+  $('nav').innerHTML=Object.keys(ic).map(k=>`<button onclick="setTab('${k}')" class="py-2 text-[11px] font-black ${tab===k?'text-blue-700':'text-slate-500'}"><div class="text-lg">${ic[k]}</div>${t(k)}</button>`).join('');
+  $('main').innerHTML=V[tab]();
+  if(tab==='pos'){renderList();renderCart()}
+}
+
+/* ---------- Views ---------- */
+const V={
+home(){
+  const td=docs.filter(d=>d.day===day()),ex=expenses.filter(e=>e.day===day());
+  const sales=td.reduce((a,d)=>a+d.total,0),prof=td.reduce((a,d)=>a+d.profit,0),exp=ex.reduce((a,e)=>a+e.amount,0);
+  const sv=items.reduce((a,i)=>a+i.cost*i.stock,0);
+  const rc=parties.filter(p=>p.type==='client').reduce((a,p)=>a+p.balance,0),pb=parties.filter(p=>p.type==='supplier').reduce((a,p)=>a+p.balance,0);
+  const box=(l,v,c)=>`<div class="${card}"><div class="text-[11px] font-black text-slate-500">${l}</div><div class="font-black text-base ${c}">${fmt(v)}</div></div>`;
+  return `<div class="grid grid-cols-2 gap-2">${box(t('salesToday')+' ('+td.length+' '+t('invoices')+')',sales,'text-blue-700')}${box(t('profit'),prof,'text-emerald-600')}${box(t('expToday'),exp,'text-rose-600')}${box(t('stockVal'),sv,'text-slate-800')}${box(t('recv'),rc,'text-amber-600')}${box(t('payable'),pb,'text-rose-600')}</div>
+  <div class="${card} space-y-2"><div class="font-black text-xs">${t('expenses')}</div>
+   <div class="grid grid-cols-5 gap-2"><input id="ex-n" placeholder="${t('expName')}" class="${inp} col-span-3"><input id="ex-a" type="number" min="0" placeholder="${t('amount')}" class="${inp} col-span-2"></div>
+   <button onclick="addExpense()" class="w-full bg-blue-700 text-white ${btn('')}">${t('add')}</button>
+   ${ex.map(e=>`<div class="flex justify-between items-center text-xs font-bold border-t pt-2"><span>${esc(e.name)}</span><span class="text-rose-600">${fmt(e.amount)} <button onclick="delExpense('${e.id}')" class="text-slate-400 px-1">✕</button></span></div>`).join('')}</div>
+  <div class="${card} space-y-2.5"><div class="flex items-center justify-between"><div class="font-black text-xs">${t('backupTitle')}</div><span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">${t('storageOn')}</span></div>
+   <button onclick="sendDailyWhatsApp()" class="w-full bg-emerald-600 text-white py-3 ${btn('')}">${t('waBtn')}</button>
+   <div class="grid grid-cols-2 gap-2"><button onclick="exportJSON()" class="bg-blue-700 text-white ${btn('')}">${t('exportBtn')}</button>
+   <label class="bg-slate-100 border border-slate-300 text-slate-800 text-center cursor-pointer ${btn('')}">${t('importBtn')}<input type="file" accept=".json" onchange="importJSON(event)" class="hidden"></label></div>
+   <button onclick="openResetModal()" class="w-full bg-rose-50 border border-rose-200 text-rose-700 ${btn('mt-1')}">${t('resetBtn')}</button></div>`;
+},
+pos(){
+  return `<div class="${card} space-y-2"><div class="grid grid-cols-2 gap-2">
+   <select id="pos-client" onchange="client=this.value" class="${inp}">${parties.filter(p=>p.type==='client').map(p=>`<option value="${p.id}" ${p.id===client?'selected':''}>${esc(pName(p))}${p.balance>0?' ('+fmt(p.balance)+')':''}</option>`).join('')}</select>
+   <div class="grid grid-cols-2 gap-1">${['retail','wholesale'].map(m=>`<button onclick="setMode('${m}')" class="${btn(mode===m?'bg-blue-700 text-white':'bg-slate-100 text-slate-700')}">${t(m)}</button>`).join('')}</div></div>
+   <div class="flex gap-2"><input id="q" value="${esc(q)}" placeholder="${t('search')}" oninput="q=this.value;renderList()" onkeydown="if(event.key==='Enter')onCode(this.value)" class="${inp}"><button onclick="openScan(onCode)" class="bg-slate-800 text-white px-3 ${btn('')}">📷</button></div>
+   <div id="plist" class="space-y-1 max-h-56 overflow-y-auto"></div></div>
+   <div id="cart" class="${card} space-y-2"></div>`;
+},
+docs(){
+  if(!docs.length)return `<div class="${card} text-center text-xs font-bold text-slate-500">${t('empty')}</div>`;
+  return [...docs].reverse().map(d=>`<div class="${card} space-y-1"><div class="flex justify-between text-xs font-black"><span>${t('bonNo')} ${d.no}</span><span class="text-blue-700">${fmt(d.total)}</span></div>
+   <div class="text-[11px] font-bold text-slate-500">${d.day} — ${esc(d.clientName)}${d.total>d.paid?` — <span class="text-rose-600">${t('rest')}: ${fmt(d.total-d.paid)}</span>`:''}</div>
+   <div class="grid grid-cols-2 gap-2 pt-1"><button onclick="printDoc('${d.id}')" class="bg-slate-100 text-slate-800 ${btn('')}">🖨 ${t('print')}</button><button onclick="delDoc('${d.id}')" class="bg-rose-50 text-rose-700 ${btn('')}">${t('del')}</button></div></div>`).join('');
+},
+stock(){
+  return `<button onclick="itemModal()" class="w-full bg-blue-700 text-white py-3 ${btn('')}">+ ${t('addItem')}</button>`+
+  (items.length?items.map(i=>`<div class="${card} flex items-center justify-between gap-2"><div><div class="font-black text-xs">${esc(i.name)}</div><div class="text-[11px] font-bold text-slate-500">${fmt(i.retail)} / ${fmt(i.wholesale)} · ${esc(i.barcode)}</div></div>
+   <div class="text-center"><div class="font-black text-sm ${i.stock<=5?'text-rose-600':'text-emerald-600'}">${i.stock}</div>${i.stock<=5?`<div class="text-[9px] text-rose-600 font-black">${t('low')}</div>`:''}<button onclick="itemModal('${i.id}')" class="text-[11px] font-black text-blue-700">${t('edit')}</button></div></div>`).join(''):`<div class="${card} text-center text-xs font-bold text-slate-500">${t('empty')}</div>`);
+},
+debts(){
+  const sec=(ty,title)=>{const l=parties.filter(p=>p.type===ty&&p.id!=='p_comptoir');
+    return `<div class="font-black text-xs pt-1">${title}</div>`+(l.length?l.map(p=>`<div class="${card} flex items-center justify-between"><div><div class="font-black text-xs">${esc(p.name)}</div><div class="text-[11px] text-slate-500 font-bold">${esc(p.phone)}</div></div>
+     <div class="text-center"><div class="font-black text-sm ${p.balance>0?'text-rose-600':'text-emerald-600'}">${fmt(p.balance)}</div>
+     ${p.balance>0?`<button onclick="payModal('${p.id}')" class="text-[11px] font-black text-blue-700">${t('pay')}</button>`:`<button onclick="delParty('${p.id}')" class="text-[11px] font-black text-slate-400">${t('del')}</button>`}</div></div>`).join(''):`<div class="${card} text-center text-xs font-bold text-slate-500">${t('empty')}</div>`)};
+  return `<button onclick="partyModal()" class="w-full bg-blue-700 text-white py-3 ${btn('')}">+ ${t('addParty')}</button>${sec('client',t('clients'))}${sec('supplier',t('suppliers'))}`;
+}};
+
+/* ---------- POS ---------- */
+function renderList(){
+  const s=q.trim().toLowerCase();
+  const l=items.filter(i=>!s||i.name.toLowerCase().includes(s)||String(i.barcode).includes(s)).slice(0,25);
+  $('plist').innerHTML=l.map(i=>`<button onclick="addCart('${i.id}')" ${i.stock<=0?'disabled':''} class="w-full flex justify-between items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold ${i.stock<=0?'opacity-40':''}"><span>${esc(i.name)} <span class="text-slate-400">(${i.stock})</span></span><span class="text-blue-700">${fmt(i[mode])}</span></button>`).join('')||`<div class="text-xs text-slate-500 font-bold text-center">${t('empty')}</div>`;
+}
+function setMode(m){mode=m;cart.forEach(c=>{const i=items.find(x=>x.id===c.id);if(i)c.price=i[mode]});render()}
+function onCode(code){
+  const i=items.find(x=>String(x.barcode)===String(code).trim());
+  if(i){addCart(i.id);q='';const e=$('q');if(e)e.value='';renderList()}else if(String(code).trim())toast(t('notFound'));
+}
+function addCart(id){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const c=cart.find(x=>x.id===id);
+  if((c?c.qty:0)+1>i.stock)return toast(t('noStock')+i.name);
+  if(c)c.qty++;else cart.push({id,name:i.name,qty:1,price:i[mode],cost:i.cost});
+  renderCart();
+}
+function chQty(id,d){
+  const c=cart.find(x=>x.id===id),i=items.find(x=>x.id===id);if(!c)return;
+  const n=c.qty+d;if(n>(i?i.stock:n))return toast(t('noStock')+c.name);
+  c.qty=n;if(n<=0)cart=cart.filter(x=>x.id!==id);renderCart();
+}
+const cartTotal=()=>cart.reduce((a,c)=>a+c.qty*c.price,0);
+function renderCart(){
+  const el=$('cart');if(!el)return;const prevPaid=$('paid')?$('paid').value:'';
+  el.innerHTML=`<div class="font-black text-xs">${t('cart')}</div>`+(cart.length?cart.map(c=>`<div class="flex items-center justify-between text-xs font-bold"><span class="flex-1">${esc(c.name)}<div class="text-[11px] text-slate-500">${fmt(c.price)}</div></span>
+   <span class="flex items-center gap-2"><button onclick="chQty('${c.id}',-1)" class="w-7 h-7 bg-slate-100 rounded-lg font-black">−</button><b>${c.qty}</b><button onclick="chQty('${c.id}',1)" class="w-7 h-7 bg-slate-100 rounded-lg font-black">+</button></span><span class="w-24 text-end text-blue-700">${fmt(c.qty*c.price)}</span></div>`).join('')+
+   `<div class="flex justify-between font-black text-sm border-t pt-2"><span>${t('total')}</span><span>${fmt(cartTotal())}</span></div>
+   <input id="paid" type="number" min="0" value="${prevPaid}" placeholder="${t('paid')}" class="${inp}">
+   <button onclick="saveInvoice()" class="w-full bg-emerald-600 text-white py-3 ${btn('')}">${t('saveInv')}</button>`:`<div class="text-center text-xs text-slate-500 font-bold">${t('empty')}</div>`);
+}
+async function saveInvoice(){
+  if(!cart.length)return;
+  for(const c of cart){const i=items.find(x=>x.id===c.id);if(!i||c.qty>i.stock)return toast(t('noStock')+c.name)}
+  const total=cartTotal(),pv=$('paid').value,cl=parties.find(p=>p.id===client)||parties[0];
+  let paid=pv===''||cl.id==='p_comptoir'?total:Math.min(total,Math.max(0,Number(pv)));
+  const no=docs.reduce((m,d)=>Math.max(m,d.no),0)+1;
+  const doc={id:'d_'+Date.now(),no,day:day(),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),clientId:cl.id,clientName:pName(cl),lines:cart.map(c=>({...c})),total,paid,profit:cart.reduce((a,c)=>a+(c.price-c.cost)*c.qty,0)};
+  cart.forEach(c=>{items.find(x=>x.id===c.id).stock-=c.qty});
+  cl.balance+=total-paid;docs.push(doc);cart=[];q='';
+  await saveData();toast(t('invSaved')+' #'+no);render();
+}
+function delDoc(id){
+  if(!confirm(t('confirmDel')))return;
+  const d=docs.find(x=>x.id===id);if(!d)return;
+  d.lines.forEach(l=>{const i=items.find(x=>x.id===l.id);if(i)i.stock+=l.qty});
+  const p=parties.find(x=>x.id===d.clientId);if(p)p.balance=Math.max(0,p.balance-(d.total-d.paid));
+  docs=docs.filter(x=>x.id!==id);saveData();render();
+}
+function printDoc(id){
+  const d=docs.find(x=>x.id===id);if(!d)return;
+  $('receipt').innerHTML=`<div dir="${lang==='ar'?'rtl':'ltr'}" style="max-width:320px;margin:auto"><h2 style="text-align:center;font-weight:900;font-size:16px">${t('appName')}</h2>
+  <p>${t('bonNo')} ${d.no} — ${d.day} ${d.time||''}</p><p>${t('client')}: ${esc(d.clientName)}</p><hr>
+  ${d.lines.map(l=>`<div style="display:flex;justify-content:space-between"><span>${esc(l.name)} ×${l.qty}</span><span>${fmt(l.qty*l.price)}</span></div>`).join('')}<hr>
+  <b style="display:flex;justify-content:space-between"><span>${t('total')}</span><span>${fmt(d.total)}</span></b>
+  <div style="display:flex;justify-content:space-between"><span>${t('paid').split(' ')[0]}</span><span>${fmt(d.paid)}</span></div>
+  <div style="display:flex;justify-content:space-between"><span>${t('rest')}</span><span>${fmt(d.total-d.paid)}</span></div></div>`;
+  window.print();
+}
+
+/* ---------- Items ---------- */
+function itemModal(id){
+  const i=items.find(x=>x.id===id)||{name:'',barcode:'',unit:'',cost:'',retail:'',wholesale:'',stock:''};
+  modal(`<h3 class="font-black text-base">${id?t('edit'):t('addItem')}</h3><form onsubmit="saveItem(event,'${id||''}')" class="space-y-2">
+   ${fld('i-name',t('name'),i.name,'text','required')}
+   <div class="flex gap-2 items-end"><div class="flex-1">${fld('i-bar',t('barcode'),i.barcode)}</div><button type="button" onclick="scanInto()" class="bg-slate-800 text-white px-3 ${btn('')}">📷</button></div>
+   <div class="grid grid-cols-2 gap-2">${fld('i-unit',t('unit'),i.unit)}${fld('i-stock',t('qty'),i.stock,'number','min="0" required')}${fld('i-cost',t('cost'),i.cost,'number','min="0" required')}${fld('i-ret',t('retailP'),i.retail,'number','min="0" required')}${fld('i-who',t('wholeP'),i.wholesale,'number','min="0"')}</div>
+   <div class="grid grid-cols-2 gap-2 pt-2"><button type="button" onclick="closeModal()" class="bg-slate-100 ${btn('')}">${t('cancel')}</button><button class="bg-blue-700 text-white ${btn('')}">${t('save')}</button></div>
+   ${id?`<button type="button" onclick="delItem('${id}')" class="w-full bg-rose-50 text-rose-700 ${btn('')}">${t('del')}</button>`:''}</form>`);
+}
+function scanInto(){openScan(c=>{$('i-bar').value=c})}
+function saveItem(e,id){
+  e.preventDefault();const n=x=>Math.max(0,Number($(x).value||0));
+  const o={name:$('i-name').value.trim(),barcode:$('i-bar').value.trim(),unit:$('i-unit').value.trim(),cost:n('i-cost'),retail:n('i-ret'),wholesale:n('i-who')||n('i-ret'),stock:n('i-stock')};
+  if(!o.name)return toast(t('nameReq'));
+  if(id)Object.assign(items.find(x=>x.id===id),o);else items.push({id:'i_'+Date.now(),...o});
+  saveData();closeModal();render();
+}
+function delItem(id){if(!confirm(t('confirmDel')))return;items=items.filter(x=>x.id!==id);cart=cart.filter(c=>c.id!==id);saveData();closeModal();render()}
+
+/* ---------- Parties & payments ---------- */
+function partyModal(){
+  modal(`<h3 class="font-black text-base">${t('addParty')}</h3><form onsubmit="saveParty(event)" class="space-y-2">
+   ${fld('pt-name',t('name'),'','text','required')}${fld('pt-phone',t('phone'),'','tel')}
+   <label class="block"><span class="font-black text-slate-600">${t('type')}</span><select id="pt-type" class="${inp} mt-1"><option value="client">${t('clientT')}</option><option value="supplier">${t('supplier')}</option></select></label>
+   ${fld('pt-balance',t('balance')+' ('+t('cur')+')',0,'number','min="0"')}
+   <div class="grid grid-cols-2 gap-2 pt-2"><button type="button" onclick="closeModal()" class="bg-slate-100 ${btn('')}">${t('cancel')}</button><button class="bg-blue-700 text-white ${btn('')}">${t('save')}</button></div></form>`);
+}
+async function saveParty(e){
+  e.preventDefault();const name=$('pt-name').value.trim();
+  if(!name)return toast(t('nameReq'));
+  const id='p_'+Date.now(),ty=$('pt-type').value;
+  parties.push({id,type:ty,name,phone:$('pt-phone').value.trim(),balance:Math.max(0,Number($('pt-balance').value||0))});
+  await saveData();closeModal();if(ty==='client')client=id;render();
+}
+function delParty(id){if(!confirm(t('confirmDel')))return;parties=parties.filter(p=>p.id!==id);if(client===id)client='p_comptoir';saveData();render()}
+function payModal(id){
+  const p=parties.find(x=>x.id===id);if(!p)return;
+  modal(`<h3 class="font-black text-base">${t('payTitle')} — ${esc(p.name)}</h3><div class="font-black text-rose-600">${fmt(p.balance)}</div>
+   <form onsubmit="savePay(event,'${id}')" class="space-y-2">${fld('pay-a',t('amount'),p.balance,'number','min="1" max="'+p.balance+'" required')}
+   <div class="grid grid-cols-2 gap-2 pt-2"><button type="button" onclick="closeModal()" class="bg-slate-100 ${btn('')}">${t('cancel')}</button><button class="bg-emerald-600 text-white ${btn('')}">${t('pay')}</button></div></form>`);
+}
+async function savePay(e,id){
+  e.preventDefault();const p=parties.find(x=>x.id===id);if(!p)return;
+  p.balance=Math.max(0,p.balance-Math.min(p.balance,Math.max(0,Number($('pay-a').value||0))));
+  await saveData();closeModal();toast(t('paidOK'));render();
+}
+
+/* ---------- Expenses ---------- */
+function addExpense(){
+  const n=$('ex-n').value.trim(),a=Number($('ex-a').value||0);
+  if(!n||a<=0)return toast(t('nameReq'));
+  expenses.push({id:'e_'+Date.now(),day:day(),name:n,amount:a});saveData();render();
+}
+function delExpense(id){expenses=expenses.filter(e=>e.id!==id);saveData();render()}
+
+/* ---------- Backup / WhatsApp / Reset ---------- */
+function exportJSON(){
+  const b=new Blob([JSON.stringify({v:1,items,parties,docs,expenses})],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='albaraka_'+day()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importJSON(ev){
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d.items)||!Array.isArray(d.parties)||!Array.isArray(d.docs))throw 0;
+      if(!confirm(t('confirmImport')))return;
+      items=d.items;parties=d.parties;docs=d.docs;expenses=Array.isArray(d.expenses)?d.expenses:[];
+      if(!parties.some(p=>p.id==='p_comptoir'))parties.unshift(COMPTOIR());
+      cart=[];await saveData();toast(t('imported'));render();
+    }catch(e){toast(t('badFile'))}
+  };
+  r.readAsText(f);ev.target.value='';
+}
+function sendDailyWhatsApp(){
+  exportJSON();
+  const td=docs.filter(d=>d.day===day()),ex=expenses.filter(e=>e.day===day());
+  const s=td.reduce((a,d)=>a+d.total,0),p=td.reduce((a,d)=>a+d.profit,0),x=ex.reduce((a,e)=>a+e.amount,0),rc=parties.filter(p=>p.type==='client').reduce((a,p)=>a+p.balance,0);
+  const txt=`*${t('appName')}* — ${day()}\n${t('salesToday')}: ${fmt(s)} (${td.length})\n${t('profit')}: ${fmt(p)}\n${t('expToday')}: ${fmt(x)}\n${t('recv')}: ${fmt(rc)}`;
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+function openResetModal(){
+  modal(`<h3 class="font-black text-base text-rose-700">${t('resetTitle')}</h3><p class="text-slate-600 font-bold leading-relaxed">${t('resetWarn')}</p>
+   <div class="grid grid-cols-2 gap-2 pt-2"><button onclick="closeModal()" class="bg-slate-100 text-slate-800 py-3 ${btn('')}">${t('cancel')}</button><button onclick="confirmFactoryReset()" class="bg-rose-600 text-white py-3 ${btn('')}">${t('confirmReset')}</button></div>`);
+}
+async function confirmFactoryReset(){
+  items=[];parties=[COMPTOIR()];docs=[];expenses=[];cart=[];client='p_comptoir';
+  await saveData();closeModal();render();toast(t('resetDone'));
+}
+
+/* ---------- Barcode scanner (BarcodeDetector API) ---------- */
+let stream=null,scanning=false;
+function stopScan(){scanning=false;if(stream){stream.getTracks().forEach(x=>x.stop());stream=null}}
+async function openScan(cb){
+  if(!('BarcodeDetector' in window)||!navigator.mediaDevices)return toast(t('noScan'));
+  const back=$('modal').classList.contains('hidden')?null:$('sheet').innerHTML;
+  modal(`<h3 class="font-black text-base">${t('scanTitle')}</h3><video id="vid" class="w-full rounded-2xl bg-slate-900 min-h-[220px]" playsinline muted></video><p class="text-[11px] font-bold text-center text-slate-500">${t('scanHint')}</p><button onclick="closeModal()" class="w-full bg-slate-100 py-3 ${btn('')}">${t('cancel')}</button>`);
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=$('vid');v.srcObject=stream;await v.play();
+    const det=new BarcodeDetector();scanning=true;
+    (async function loop(){
+      if(!scanning)return;
+      try{const r=await det.detect(v);if(r.length){const c=r[0].rawValue;stopScan();if(back){$('sheet').innerHTML=back}else closeModal();cb(c);return}}catch(e){}
+      setTimeout(loop,300);
+    })();
+  }catch(e){closeModal();toast(t('noCam'))}
+}
+
+/* ---------- PWA install ---------- */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
+function installPWAApp(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null}else toast(t('installHint'))}
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  await loadAllData();render();
+});
+</script>
+</body>
+</html>
